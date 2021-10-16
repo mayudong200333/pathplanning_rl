@@ -1,0 +1,68 @@
+## train the env
+import gym
+import torch.nn
+
+import envs
+import argparse
+import numpy as np
+from stable_baselines3.common.cmd_util import make_vec_env
+from stable_baselines3.common.env_checker import check_env
+from stable_baselines3.common.utils import set_random_seed
+from stable_baselines3 import PPO
+from stable_baselines3.a2c import MlpPolicy
+from stable_baselines3.common.policies import ActorCriticPolicy as a2cppoMlpPolicy
+from stable_baselines3.common.callbacks import CheckpointCallback,EvalCallback,StopTrainingOnRewardThreshold
+
+
+
+if __name__ == '__main__':
+
+    parse = argparse.ArgumentParser(description='Single agent reinforcement learning in path planning')
+    parse.add_argument('--env',default='single-basicgridenv-v0',type=str)
+    parse.add_argument('--algo',default='ppo',type=str)
+    ARGS = parse.parse_args()
+
+    #### Save directory #####
+    filename = 'results/' + ARGS.env + '-' + ARGS.algo
+
+    #### Train the env #####
+    env_name = ARGS.env
+    sa_env_kwargs = dict(walls='FourRooms',threshold_distance=1)
+    train_env = make_vec_env(env_name, env_kwargs=sa_env_kwargs, n_envs=1, seed=0)
+    print("[INFO] Action space:", train_env.action_space)
+    print("[INFO] Observation space", train_env.observation_space)
+
+    onpolicy_kwargs = dict(activation_fn=torch.nn.ReLU, net_arch=[512, 512, dict(vf=[256, 128], pi=[256, 128])])
+    offpolicy_kwargs = dict(activation_fn=torch.nn.ReLU, net_arch=[512, 512, 256, 128])
+
+    model = PPO(a2cppoMlpPolicy, train_env, policy_kwargs=onpolicy_kwargs, tensorboard_log=filename + '/tb/', verbose=1)
+
+    eval_env = gym.make(env_name,walls='FourRooms',threshold_distance=1)
+
+    callback_on_best = StopTrainingOnRewardThreshold(reward_threshold=-0, verbose=1)
+
+    eval_callback = EvalCallback(eval_env, callback_on_new_best=callback_on_best, verbose=1,
+                                 best_model_save_path=filename + '/',
+                                 log_path=filename + '/',
+                                 eval_freq=2000,
+                                 deterministic=True,
+                                 render=False)
+
+    model.learn(total_timesteps=1e6,
+                callback=eval_callback,
+                log_interval=100)
+
+    ### Save the model ###
+    model.save(filename + '/success_model.zip')
+    print(filename)
+
+    #### Print training progression ############################
+    with np.load(filename + '/evaluations.npz') as data:
+        for j in range(data['timesteps'].shape[0]):
+            print(str(data['timesteps'][j]) + "," + str(data['results'][j][0][0]))
+
+
+
+
+
+
