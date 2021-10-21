@@ -17,7 +17,7 @@ class Basic2dUAVEnv(gym.Env):
         x,y,yaw,goalsets
     """
 
-    def __init__(self,init_yaw=0,map=MAP,resize_factor=1,freq=100,threshold_distance=1):
+    def __init__(self,init_yaw=0,map=MAP,resize_factor=1,freq=100,threshold_distance=0.1):
         if resize_factor>1:
             self._map = resize_maps(map,resize_factor)
         else:
@@ -93,8 +93,8 @@ class Basic2dUAVEnv(gym.Env):
         return obs_all,reward,done,{}
 
     def _dynamics(self,action):
-        dx = action[0]*np.cos(self.obs[2])
-        dy = action[0]*np.sin(self.obs[2])
+        dx = action[0]*np.sin(self.obs[2])
+        dy = action[0]*np.cos(self.obs[2])
         dyaw = action[1]
         return np.array([dx,dy,dyaw])
 
@@ -117,6 +117,14 @@ class Basic2dUAVEnv(gym.Env):
         return np.linalg.norm(self.obs[:2]-self.goal) < self.threshold_distance or self.count/self.SIMFREQ >= 2*(self._height+self._width)
 
     def _compute_reward(self):
+        self.reward_parameter = np.array([1,1,1,1])
+        r_step = -1
+        r_goalDist = -1*np.linalg.norm(self.obs[:2]-self.goal)**2
+        if self._is_blocked(self.obs[:2]):
+            r_collision = -1
+        else:
+            r_collision = 0
+        r_clearance = min(self.lidar_obs)
         return -1
 
     def _get_goal(self):

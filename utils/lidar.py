@@ -7,7 +7,7 @@ class Lidar:
         degrees: the range of the beams
         length: the length of the beams
     '''
-    def __init__(self,map,num_beams=64,degrees=220,length=2.0,discrete_length=0.05,obstacle_radius=0.5):
+    def __init__(self,map,num_beams=30,degrees=150,length=2.0,discrete_length=0.05,obstacle_radius=0.5):
         self.num_beams = num_beams
         self.degrees = degrees
         self.discrete_rad = np.deg2rad(self.degrees/self.num_beams)
@@ -28,7 +28,7 @@ class Lidar:
                 length = j*self.discrete_length
                 lidar_position = current_position + np.array([np.cos(angle)*length,np.sin(angle)*length])
                 if self._touch_obstacle(lidar_position):
-                    lidar_obs[i] = length
+                    lidar_obs[i] = length - self.discrete_length
                     break
             else:
                 lidar_obs[i] = length

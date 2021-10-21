@@ -19,7 +19,7 @@ if __name__ == '__main__':
         act = env.action_space.sample()
         obs, rew, done, _ = env.step(act)
         state = env._get_position()
-        print(state)
+        print(obs)
         logger.log(state, act)
         r += rew
         if done :
