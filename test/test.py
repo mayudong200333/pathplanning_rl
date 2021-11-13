@@ -15,8 +15,9 @@ if __name__ == '__main__':
     logger = Logger(goal=goal)
     logger.log(state, None)
     r = 0
-    for i in range(200):
-        act = env.action_space.sample()
+    for i in range(1000):
+        #act = env.action_space.sample()
+        act = np.array([1,0.3])
         obs, rew, done, _ = env.step(act)
         state = env._get_position()
         print(obs)
@@ -27,8 +28,7 @@ if __name__ == '__main__':
 
     print('ok')
     env.close()
-    print(logger.history)
-    vis = Visualize(map_matrix=WALLS['FourRooms'], history=logger.history)
+    vis = Visualize(map_matrix=WALLS['Box'], history=logger.history)
 
 
 

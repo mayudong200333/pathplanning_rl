@@ -7,7 +7,7 @@ class Lidar:
         degrees: the range of the beams
         length: the length of the beams
     '''
-    def __init__(self,map,num_beams=30,degrees=150,length=2.0,discrete_length=0.05,obstacle_radius=0.5):
+    def __init__(self,map,num_beams=5,degrees=150,length=2.0,discrete_length=0.05,obstacle_radius=0.5):
         self.num_beams = num_beams
         self.degrees = degrees
         self.discrete_rad = np.deg2rad(self.degrees/self.num_beams)
@@ -36,7 +36,7 @@ class Lidar:
 
     def _touch_obstacle(self,position):
         position = np.round(position).astype(np.int)
-        if position[0] >= self.map_shape[0] or position[1] >= self.map_shape[1]:
+        if position[0] >= self.map_shape[0] or position[1] >= self.map_shape[1] or position[0] < 0 or position[1] < 0:
             return True
         return (self.map[position[0],position[1]] == 1)
 

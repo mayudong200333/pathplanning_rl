@@ -2,10 +2,11 @@ import gym
 import gym.spaces
 import numpy as np
 from maps.example import WALLS
+from maps.map_generate import map_generate
 from utils.tools import resize_maps
 from utils.lidar import Lidar
 
-MAP = WALLS['FourRooms']
+MAP = WALLS['Maze3x3']
 
 class Basic2dUAVEnv(gym.Env):
     """ Basic class of 2D navegation UAV env
@@ -17,11 +18,12 @@ class Basic2dUAVEnv(gym.Env):
         x,y,yaw,goalsets
     """
 
-    def __init__(self,init_yaw=0,map=MAP,resize_factor=1,freq=100,threshold_distance=0.1):
+    def __init__(self,init_yaw=0,map=None,resize_factor=1,freq=100,threshold_distance=0.1,map_random=True):
+        if not map:
+            self._map = map_generate([4,4],3)
         if resize_factor>1:
             self._map = resize_maps(map,resize_factor)
-        else:
-            self._map = map
+        self._map_random = map_random
         (height,width) = self._map.shape
         self._height = height - 1
         self._width = width - 1
@@ -36,6 +38,7 @@ class Basic2dUAVEnv(gym.Env):
         self.threshold_distance = threshold_distance
         self.lidar = Lidar(map=self._map)
         self.num_obs = 5 + self.lidar.num_beams
+        #self.num_obs = 5
         self.observation_space = gym.spaces.Box(
             low = np.array([0.0 for _ in range(self.num_obs)]),
             high= np.array([1.0 for _ in range(self.num_obs)]),
@@ -45,10 +48,16 @@ class Basic2dUAVEnv(gym.Env):
 
     def reset(self):
         self.count = 0
+        if self._map_random:
+            self._map = map_generate([4,4],3)
         self.start,self.goal = self._sample_random_state(),self._sample_random_state()
+        #self.start, self.goal = np.array([0.0,0.0]),np.array([2.0,2.0])
+        #self.start += np.random.uniform(low=0.0, high=0.5, size=2)
+        #self.goal += np.random.uniform(low=0.0, high=0.5, size=2)
         self.obs = np.concatenate([self.start,self.init_yaw,self.goal],0)
         self.lidar_obs = self.lidar.get_lidar_obs(self.obs[:3])
         return np.concatenate([self._normalize_obs(self.obs),self.lidar_obs],0)
+        #return self.obs
 
     def _sample_random_state(self):
         '''
@@ -61,16 +70,18 @@ class Basic2dUAVEnv(gym.Env):
             candidate_states[0][state_index],
             candidate_states[1][state_index],
         ],dtype=np.float)
+        '''
         state += np.random.uniform(low=0.0, high=0.5, size=2)
         if state[0] >= self._height:
-            state[0] -= 1
+            state[0] = int(state[0])
         elif state[1] >= self._width:
-            state[1] -= 1
+            state[1] = int(state[1])
+        '''
         assert not self._is_blocked(state)
         return state
 
     def _is_blocked(self,state):
-        if (state[0]<0) or (state[0]>=self._height) or (state[1]<0) or (state[1]>=self._width):
+        if (state[0]<0) or (state[0]>self._height) or (state[1]<0) or (state[1]>self._width):
             return True
         (i,j) = self._discretize_state(state)
         return (self._map[i,j]==1)
@@ -87,10 +98,10 @@ class Basic2dUAVEnv(gym.Env):
         self.lidar_obs = self.lidar.get_lidar_obs(self.obs[:3])
         self.count += 1
         obs = self._normalize_obs(self.obs)
-        obs_all = np.concatenate([obs,self.lidar_obs],0)
+        self.obs_all = np.concatenate([obs,self.lidar_obs],0)
         done = self._check_done()
         reward = self._compute_reward()
-        return obs_all,reward,done,{}
+        return self.obs_all,reward,done,{}
 
     def _dynamics(self,action):
         dx = action[0]*np.sin(self.obs[2])
@@ -117,15 +128,18 @@ class Basic2dUAVEnv(gym.Env):
         return np.linalg.norm(self.obs[:2]-self.goal) < self.threshold_distance or self.count/self.SIMFREQ >= 2*(self._height+self._width)
 
     def _compute_reward(self):
-        self.reward_parameter = np.array([1,1,1,1])
+        # best [1,1,2,1]
+        self.reward_parameter = np.array([0.5,0.5,1,1])
         r_step = -1
-        r_goalDist = -1*np.linalg.norm(self.obs[:2]-self.goal)**2
+        r_goalDist = -1*np.linalg.norm(self.obs[:2]-self.goal)
         if self._is_blocked(self.obs[:2]):
             r_collision = -1
         else:
             r_collision = 0
         r_clearance = min(self.lidar_obs)
-        return -1
+        r = np.array([r_goalDist,r_step,r_collision,r_clearance])
+        reward = np.dot(self.reward_parameter,r)
+        return reward
 
     def _get_goal(self):
         return self.goal

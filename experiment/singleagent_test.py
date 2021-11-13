@@ -7,6 +7,7 @@ import torch
 from stable_baselines3.common.env_checker import check_env
 from stable_baselines3 import A2C
 from stable_baselines3 import PPO
+from stable_baselines3 import DDPG
 from stable_baselines3.common.policies import ActorCriticPolicy as a2cppoMlpPolicy
 from stable_baselines3.sac.policies import SACPolicy as sacMlpPolicy
 from stable_baselines3.common.evaluation import evaluate_policy
@@ -23,19 +24,23 @@ os.environ['KMP_DUPLICATE_LIB_OK']='True'
 
 if __name__ == '__main__':
     parse = argparse.ArgumentParser(description='Single agent test in reinforcement learning of path planning')
-    parse.add_argument('--env', default='single-basicgridenv-v0', type=str)
+    parse.add_argument('--env', default='single-basic2duavenv-v0', type=str)
     parse.add_argument('--algo', default='ppo', type=str)
+    parse.add_argument('--num', default='4', type=str)
+    parse.add_argument('--map', default='random', type=str)
     ARGS = parse.parse_args()
 
-    filename = 'results/' + ARGS.env + '-' + ARGS.algo
+    filename = 'results/' + ARGS.env + '-' + ARGS.algo + '-' + ARGS.map
 
-    path = filename + '/success_model.zip'
+    path = filename + '/best_model.zip'
 
     model = PPO.load(path)
 
     env_name = ARGS.env
 
     #### Evaluate the model ####################################
+    '''
+
     eval_env = gym.make(env_name,
                         )
     mean_reward, std_reward = evaluate_policy(model,
@@ -43,13 +48,16 @@ if __name__ == '__main__':
                                               n_eval_episodes=10
                                               )
     print("\n\n\nMean reward ", mean_reward, " +- ", std_reward, "\n\n")
+    
+    '''
+
 
     #### Show, record a video, and log the model's performance #
     test_env = gym.make(env_name,
                         )
 
     obs = test_env.reset()
-    state = test_env._get_state()
+    state = test_env._get_position()
     goal = test_env._get_goal()
     logger = Logger(goal=goal)
     logger.log(state,None)
@@ -59,15 +67,11 @@ if __name__ == '__main__':
                                         deterministic=True  # OPTIONAL 'deterministic=False'
                                         )
         obs, reward, done, info = test_env.step(action)
-        state = test_env._get_state()
+        state = test_env._get_position()
         logger.log(state,action)
         r += reward
         if done :
-            print(obs)
             break
     test_env.close()
     print(r)
-    print(logger.history)
-    print(WALLS['FourRooms'])
-
-    vis = Visualize(map_matrix=WALLS['FourRooms'],history=logger.history)
+    vis = Visualize(map_matrix=test_env._map,history=logger.history)
