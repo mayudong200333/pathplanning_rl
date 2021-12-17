@@ -7,7 +7,7 @@ class Lidar:
         degrees: the range of the beams
         length: the length of the beams
     '''
-    def __init__(self,map,num_beams=5,degrees=150,length=2.0,discrete_length=0.05,obstacle_radius=0.5):
+    def __init__(self,map,num_beams=15,degrees=150,length=1.0,discrete_length=0.05,obstacle_radius=0.5):
         self.num_beams = num_beams
         self.degrees = degrees
         self.discrete_rad = np.deg2rad(self.degrees/self.num_beams)

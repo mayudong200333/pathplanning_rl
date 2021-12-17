@@ -21,20 +21,22 @@ from maps.example import WALLS
 
 if __name__ == '__main__':
 
+
     parse = argparse.ArgumentParser(description='Single agent reinforcement learning in UAV path planning')
-    parse.add_argument('--env',default='single-basic2duavenv-v0',type=str)
+    parse.add_argument('--env',default='single-basic2duavenv-v1',type=str)
     parse.add_argument('--algo',default='ppo',type=str)
-    #parse.add_argument('--num', default='5', type=str)
+    parse.add_argument('--num', default='10', type=str)
     parse.add_argument('--map', default='random', type=str)
     ARGS = parse.parse_args()
 
     #### Save directory #####
-    filename = 'results/' + ARGS.env + '-' + ARGS.algo + '-' + ARGS.map
+    filename = 'results/' + ARGS.env + '-' + ARGS.algo + '-' + ARGS.map + '-' + ARGS.num
 
     #### Train the env #####
     env_name = ARGS.env
-    sa_env_kwargs = dict(map=None,threshold_distance=0.2)
-    train_env = make_vec_env(env_name, env_kwargs=sa_env_kwargs, n_envs=1, seed=0)
+    sa_env_kwargs = dict(threshold_distance=0.1)
+    train_env = make_vec_env(env_name, env_kwargs=sa_env_kwargs, n_envs=10)
+
     print("[INFO] Action space:", train_env.action_space)
     print("[INFO] Observation space", train_env.observation_space)
 
@@ -44,11 +46,12 @@ if __name__ == '__main__':
     n_actions = train_env.action_space.shape[-1]
     action_noise = OrnsteinUhlenbeckActionNoise(mean=np.zeros(n_actions), sigma=0.1 * np.ones(n_actions))
 
-    model = PPO(a2cppoMlpPolicy, train_env ,policy_kwargs=onpolicy_kwargs, tensorboard_log=filename + '/tb/', verbose=1)
+    model = PPO(a2cppoMlpPolicy, train_env,policy_kwargs=onpolicy_kwargs, learning_rate=3e-5,target_kl=15e-4,tensorboard_log=filename + '/tb/', verbose=1)
+    #model = DDPG(td3ddpgMlpPolicy, train_env, action_noise=action_noise,policy_kwargs=offpolicy_kwargs, tensorboard_log=filename + '/tb/', verbose=1)
 
-    eval_env = gym.make(env_name,map=None,threshold_distance=0.2)
+    eval_env = gym.make(env_name,threshold_distance=0.1)
 
-    callback_on_best = StopTrainingOnRewardThreshold(reward_threshold=0, verbose=1)
+    callback_on_best = StopTrainingOnRewardThreshold(reward_threshold=10000, verbose=1)
 
     eval_callback = EvalCallback(eval_env, callback_on_new_best=callback_on_best, verbose=1,
                                  best_model_save_path=filename + '/',
@@ -57,7 +60,7 @@ if __name__ == '__main__':
                                  deterministic=True,
                                  render=False)
 
-    model.learn(total_timesteps=5e6,
+    model.learn(total_timesteps=1e8,
                 callback=eval_callback,
                 log_interval=100)
 
