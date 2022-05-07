@@ -58,9 +58,8 @@ class Basic2dUAVEnv2(gym.Env):
         if self._map_random:
             self._map = map_generate([4,4],3)
         self.start,self.goal = self._sample_constrained_state()
-        #self.start, self.goal = np.array([4.0, 4.0]), np.array([5.0, 3.0])
         self.init_angle = self._clip_angle(np.pi/2-np.arctan2(self.goal[1]-self.start[1],self.goal[0]-self.start[0]))
-        self.init_yaw = np.array([self.init_angle])
+        self.init_yaw = np.array([self.init_angle]) + np.array([np.random.uniform(low=-np.pi/2,high=np.pi/2)])
         #self.init_yaw = np.array([0.,])
         #self.init_yaw = np.array([np.random.uniform(low=-np.pi,high=np.pi)])
         self.obs = np.concatenate([self.start,self.init_yaw,self.goal],0)
@@ -151,19 +150,18 @@ class Basic2dUAVEnv2(gym.Env):
         return (self._if_goal or self._if_collision or self.count/self.SIMFREQ >= 1/4*(self._height+self._width))
 
     def _compute_reward(self,action):
-        omegag = 2.5
+        omegag = 0.25
         omegaw = -0.05
         omegal = 0.01
 
 
         if np.linalg.norm(self.obs[:2]-self.goal) < self.threshold_distance:
-            r1 = 15.0
+            r1 = 100.0
             self._if_goal=True
         else:
             r1 = omegag * (np.linalg.norm(self.last_pos-self.goal)-np.linalg.norm(self.obs[:2]-self.goal))
 
         if min(self.lidar_obs) < 0.1:
-            #r2 = -0.1 #implemented in num6
             r2 = -15.0
             self._if_collision=True
         else:
@@ -181,7 +179,9 @@ class Basic2dUAVEnv2(gym.Env):
 
         r5 = -0.1*np.linalg.norm(norm_now-norm_goal) #implemented in num 5
 
-        reward = r1 + r2 + r5
+        r6 = -1
+
+        reward = r1 + r2 + r3 + r6
 
 
         return reward

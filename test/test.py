@@ -17,8 +17,8 @@ if __name__ == '__main__':
     r = 0.0
     for i in range(1000):
         act = env.action_space.sample()
-        #act = np.array([1,1])
         obs, rew, done, _ = env.step(act)
+        print(obs[:3])
         state = env._get_position()
         logger.log(state, act)
         r += rew
@@ -28,6 +28,9 @@ if __name__ == '__main__':
     print('ok')
     env.close()
     vis = Visualize(map_matrix=WALLS['Random'], history=logger.history)
+
+
+
 
 
 

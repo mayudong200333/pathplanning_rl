@@ -25,17 +25,17 @@ os.environ['KMP_DUPLICATE_LIB_OK']='True'
 if __name__ == '__main__':
     parse = argparse.ArgumentParser(description='Single agent test in reinforcement learning of path planning')
     parse.add_argument('--env', default='single-basic2duavenv-v1', type=str)
-    parse.add_argument('--algo', default='ppo', type=str)
+    parse.add_argument('--algo', default='ddpg', type=str)
     parse.add_argument('--num', default='10', type=str)
     parse.add_argument('--map', default='random', type=str)
     ARGS = parse.parse_args()
 
     filename = 'results/' + ARGS.env + '-' + ARGS.algo + '-' + ARGS.map + '-' + ARGS.num
 
-    path = filename + '/best_model.zip'
+    path = filename + '/success_model.zip'
 
-    model = PPO.load(path)
-    #model = DDPG.load(path)
+    #model = PPO.load(path)
+    model = DDPG.load(path)
 
     env_name = ARGS.env
 

@@ -24,7 +24,7 @@ if __name__ == '__main__':
 
     parse = argparse.ArgumentParser(description='Single agent reinforcement learning in UAV path planning')
     parse.add_argument('--env',default='single-basic2duavenv-v1',type=str)
-    parse.add_argument('--algo',default='ppo',type=str)
+    parse.add_argument('--algo',default='ddpg',type=str)
     parse.add_argument('--num', default='10', type=str)
     parse.add_argument('--map', default='random', type=str)
     ARGS = parse.parse_args()
@@ -35,7 +35,7 @@ if __name__ == '__main__':
     #### Train the env #####
     env_name = ARGS.env
     sa_env_kwargs = dict(threshold_distance=0.1)
-    train_env = make_vec_env(env_name, env_kwargs=sa_env_kwargs, n_envs=10)
+    train_env = make_vec_env(env_name, env_kwargs=sa_env_kwargs, n_envs=1)
 
     print("[INFO] Action space:", train_env.action_space)
     print("[INFO] Observation space", train_env.observation_space)
@@ -46,8 +46,8 @@ if __name__ == '__main__':
     n_actions = train_env.action_space.shape[-1]
     action_noise = OrnsteinUhlenbeckActionNoise(mean=np.zeros(n_actions), sigma=0.1 * np.ones(n_actions))
 
-    model = PPO(a2cppoMlpPolicy, train_env,policy_kwargs=onpolicy_kwargs, learning_rate=3e-5,target_kl=15e-4,tensorboard_log=filename + '/tb/', verbose=1)
-    #model = DDPG(td3ddpgMlpPolicy, train_env, action_noise=action_noise,policy_kwargs=offpolicy_kwargs, tensorboard_log=filename + '/tb/', verbose=1)
+    #model = PPO(a2cppoMlpPolicy, train_env,policy_kwargs=onpolicy_kwargs, learning_rate=3e-5,target_kl=15e-4,tensorboard_log=filename + '/tb/', verbose=1)
+    model = DDPG(td3ddpgMlpPolicy, train_env, action_noise=action_noise,policy_kwargs=offpolicy_kwargs, tensorboard_log=filename + '/tb/', verbose=1)
 
     eval_env = gym.make(env_name,threshold_distance=0.1)
 
@@ -60,7 +60,7 @@ if __name__ == '__main__':
                                  deterministic=True,
                                  render=False)
 
-    model.learn(total_timesteps=1e8,
+    model.learn(total_timesteps=1e6,
                 callback=eval_callback,
                 log_interval=100)
 
