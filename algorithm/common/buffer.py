@@ -6,7 +6,7 @@ from gym import spaces
 from abc import ABC,abstractmethod
 from typing import Any,Dict,Generator,List,Optional,Union
 from algorithm.common.preprocessing import get_obs_shape,get_action_dim
-from algorithm.common.type_aliases import ReplayBufferSamples
+from algorithm.common.type_aliases import ReplayBufferSamples,RolloutBufferSamples
 
 class BaseBuffer(ABC):
     def __init__(self,
@@ -144,9 +144,93 @@ class ReplayBuffer(BaseBuffer):
         return ReplayBufferSamples(*tuple(map(self.to_torch,data)))
 
 
+class RolloutBuffer(BaseBuffer):
+
+    def __init__(self,buffer_size:int,
+                 observation_space:spaces.Space,
+                 action_space:spaces.Space,
+                 device:Union[th.device,str]=th.device('cuda:0' if th.cuda.is_available() else 'cpu',),
+                 gae_lambda:float = 1,
+                 gamma:float = 1):
+        super().__init__(buffer_size,observation_space,action_space,device)
+        self.gae_lambda = gae_lambda
+        self.gamma = gamma
+
+        self.observations,self.actions,self.rewards,self.advantages = None,None,None,None
+        self.returns,self.values,self.log_probs,self.dones = None,None,None,None
+        self.reset()
+
+    def reset(self):
+
+        self.observations = np.zeros((self.buffer_size,)+self.obs_shape,dtype=np.float32)
+        self.actions = np.zeros((self.buffer_size,self.action_dim),dtype=np.float32)
+        self.rewards = np.zeros((self.buffer_size,1),dtype=np.float32)
+        self.values = np.zeros((self.buffer_size,1),dtype=np.float32)
+        self.log_probs = np.zeros((self.buffer_size,1),dtype=np.float32)
+        self.advantages = np.zeros((self.buffer_size,1),dtype=np.float32)
+        self.dones = np.zeros((self.buffer_size, 1), dtype=np.float32)
+        super().reset()
+
+    def compute_returns_and_advantage(self,last_values:th.Tensor,done:bool):
+
+        last_values = last_values.clone().cpu().numpy().flatten()
+
+        last_gae_lam = 0
+        for step in reversed(range(self.buffer_size)):
+            if step == self.buffer_size - 1:
+                next_non_terminal = 1.0 - done
+                next_values = last_values
+            else:
+                next_non_terminal = 1.0 - self.dones[step+1]
+                next_values = self.values[step+1]
+
+            delta = self.rewards[step] + self.gamma * next_values * (1-self.dones[step]) - self.values[step]
+            last_gae_lam = delta + self.gamma * self.gae_lambda * next_non_terminal * last_gae_lam
+            self.advantages[step] = last_gae_lam
+        self.returns = self.advantages + self.values
+
+    def add(self,
+            obs:np.ndarray,
+            action:np.ndarray,
+            reward:np.ndarray,
+            done:np.ndarray,
+            value:th.Tensor,
+            log_prob:th.Tensor):
+
+        self.observations[self.pos] = np.array(obs).copy()
+        self.actions[self.pos] = np.array(action).copy()
+        self.rewards[self.pos] = np.array(reward).copy()
+        self.dones[self.pos] = np.array(done).copy()
+        self.values[self.pos] = value.clone().cpu().numpy().flatten()
+        self.log_probs[self.pos] = log_prob
+        self.pos += 1
+        if self.pos == self.buffer_size:
+            self.full = True
+
+    def get(self,batch_size:Optional[int]=None):
+        assert self.full, ""
+        indices = np.random.permutation(self.buffer_size)
+
+        if batch_size is None:
+            batch_size = self.buffer_size
+        start_idx = 0
+        while start_idx < self.buffer_size:
+            yield self._get_samples(indices[start_idx:start_idx+batch_size])
+            start_idx += batch_size
 
 
-
+    def _get_samples(self,batch_inds:np.ndarray,env=None):
+        data = (
+            self.observations[batch_inds],
+            self.actions[batch_inds],
+            self.values[batch_inds].flatten(),
+            self.log_probs[batch_inds].flatten(),
+            self.advantages[batch_inds].flatten(),
+            self.dones[batch_inds],
+            self.returns[batch_inds].flatten(),
+            self.rewards[batch_inds]
+        )
+        return RolloutBufferSamples(*tuple(map(self.to_torch,data)))
 
 
 

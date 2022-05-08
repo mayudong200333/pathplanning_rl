@@ -90,7 +90,7 @@ class Algorithm(ABC):
     def is_update(self,steps):
         raise NotImplementedError()
 
-    def step(self,step,t,steps):
+    def step(self,state,t,steps):
         raise NotImplementedError()
 
     def explore(self,state):
