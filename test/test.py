@@ -6,7 +6,9 @@ from utils.visualize import Visualize
 from maps.example import WALLS
 
 
+
 if __name__ == '__main__':
+
     env_name = 'single-basic2duavenv-v1'
     env = gym.make(env_name)
     obs = env.reset()
@@ -18,7 +20,6 @@ if __name__ == '__main__':
     for i in range(1000):
         act = env.action_space.sample()
         obs, rew, done, _ = env.step(act)
-        print(done)
         state = env._get_position()
         logger.log(state, act)
         r += rew
