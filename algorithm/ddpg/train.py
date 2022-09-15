@@ -4,7 +4,7 @@ import gym
 import envs
 
 if __name__ == '__main__':
-    env_id = 'single-basic2duavenv-v1'
+    env_id = 'Pendulum-v0'
     seed = 0
     num_steps = 1*10**7
     eval_interval = 10**3
@@ -12,6 +12,7 @@ if __name__ == '__main__':
     env = gym.make(env_id)
     test_env = gym.make(env_id)
     algo = DDPG(env=env)
+    print(env._max_episode_steps)
 
     trainer = Trainer(
         env = env,

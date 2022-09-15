@@ -59,14 +59,14 @@ class Basic2dUAVEnv(gym.Env):
             self._map = map_generate([4,4],3)
         #self.start,self.goal = self._sample_random_state(),self._sample_random_state()
         #self.init_yaw = np.array([np.pi * np.random.rand()])
-        self.init_yaw = np.array([0.0])
+        self.init_yaw = np.array([0.0],dtype= np.float64)
         #self.start, self.goal = np.array([0.5,0.5]),np.array([1.5,5.5])
-        self.start, self.goal = np.array([2.5, 2.5]), np.array([5.5, 3.5])
+        self.start, self.goal = np.array([2.5, 2.5],dtype= np.float64), np.array([5.5, 3.5],dtype=np.float64)
         self.start += np.random.uniform(low=-0.2, high=0.2, size=2)
         self.goal += np.random.uniform(low=-0.2, high=0.2, size=2)
         self.obs = np.concatenate([self.start,self.init_yaw,self.goal],0)
         self.lidar_obs = self.lidar.get_lidar_obs(self.obs[:3])
-        return np.concatenate([self._normalize_obs(self.obs),np.array([0.0,0.0],dtype=np.float32),self.lidar_obs],0)
+        return np.concatenate([self._normalize_obs(self.obs),np.array([0.0,0.0],dtype=np.float64),self.lidar_obs],0)
         #return self.obs
 
     def _sample_random_state(self):

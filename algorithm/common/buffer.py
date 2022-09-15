@@ -233,6 +233,87 @@ class RolloutBuffer(BaseBuffer):
         return RolloutBufferSamples(*tuple(map(self.to_torch,data)))
 
 
+class EpisodicReplayBuffer(BaseBuffer):
+
+    def __init__(self,buffer_size:int,
+                 max_episode_size:int,
+                 observation_space:spaces.Space,
+                 action_space:spaces.Space,
+                 device:Union[th.device,str]=th.device('cuda:0' if th.cuda.is_available() else 'cpu'),
+                 ):
+        super(EpisodicReplayBuffer,self).__init__(buffer_size,observation_space,action_space,device)
+
+        if psutil is not None:
+            mem_available = psutil.virtual_memory().available
+
+        self.episode_pos = 0
+
+        self.max_episode_size = max_episode_size
+        self.episode_num = int(self.buffer_size//self.max_episode_size)
+
+
+        self.observations = np.zeros((self.episode_num,self.max_episode_size,)+self.obs_shape,dtype=observation_space.dtype)
+        self.next_observations = np.zeros((self.episode_num,self.max_episode_size,)+self.obs_shape,dtype=observation_space.dtype)
+
+        self.actions = np.zeros((self.episode_num,self.max_episode_size,self.action_dim),dtype=action_space.dtype)
+        self.rewards = np.zeros((self.episode_num,self.max_episode_size,1),dtype=np.float32)
+        self.dones = np.zeros((self.episode_num,self.max_episode_size,1),dtype=np.float32)
+
+        if psutil is not None:
+            total_memory_usage = self.observations.nbytes + self.actions.nbytes + self.rewards.nbytes + self.dones.nbytes
+
+            if self.next_observations is not None:
+                total_memory_usage += self.next_observations.nbytes
+
+            if total_memory_usage > mem_available:
+                total_memory_usage /= 1e9
+                mem_available /= 1e9
+                warnings.warn(
+                    "This system does not have apparently enough memory to store the complete "
+                    f"replay buffer {total_memory_usage:.2f}GB > {mem_available:.2f}GB"
+                )
+
+    def add(self,
+            obs:np.ndarray,
+            next_obs:np.ndarray,
+            action:np.ndarray,
+            reward:np.ndarray,
+            done:np.ndarray):
+
+        self.observations[self.episode_pos,self.pos] = np.array(obs).copy()
+
+        self.next_observations[self.episode_pos,self.pos] = np.array(next_obs).copy()
+
+        self.actions[self.episode_pos,self.pos] = np.array(action).copy()
+        self.rewards[self.episode_pos,self.pos] = np.array(reward).copy()
+        self.dones[self.episode_pos,self.pos] = np.array(done).copy()
+
+        self.pos += 1
+        if self.pos == self.max_episode_size or done:
+            self.episode_pos += 1
+            self.pos = 0
+
+        if self.episode_pos == self.episode_num:
+            self.full = True
+            self.episode_pos = 0
+            self.pos = 0
+
+    def sample(self,batch_size,env):
+        upper_bound = self.episode_num if self.full else self.episode_pos
+        batch_inds = np.random.randint(0,upper_bound,size=batch_size)
+        return self._get_samples(batch_inds,env=env)
+
+    def _get_samples(self,batch_inds:np.ndarray,env):
+
+        data = (
+            self.observations[batch_inds,:,:],
+            self.actions[batch_inds,:,:],
+            self.next_observations[batch_inds,:,:],
+            self.dones[batch_inds,:,:],
+            self.rewards[batch_inds,:,:]
+        )
+
+        return ReplayBufferSamples(*tuple(map(self.to_torch,data)))
 
 
 

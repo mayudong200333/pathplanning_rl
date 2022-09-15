@@ -37,7 +37,7 @@ class Basic2dUAVEnv2(gym.Env):
         self.action_space = gym.spaces.Box(
             low = np.array([0.0,-1.0]),
             high= np.array([1.0,1.0]),
-            dtype=np.float32
+            dtype=np.float64
         )
         self.last_pos = None
         self.threshold_distance = threshold_distance
@@ -46,7 +46,7 @@ class Basic2dUAVEnv2(gym.Env):
         self.observation_space = gym.spaces.Box(
             low = np.array([0.0 for _ in range(self.num_obs)]),
             high= np.array([1.0 for _ in range(self.num_obs)]),
-            dtype= np.float32
+            dtype= np.float64
         )
         self.reset()
 

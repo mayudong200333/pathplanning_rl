@@ -23,9 +23,9 @@ if __name__ == '__main__':
 
 
     parse = argparse.ArgumentParser(description='Single agent reinforcement learning in UAV path planning')
-    parse.add_argument('--env',default='single-basic2duavenv-v1',type=str)
+    parse.add_argument('--env',default='single-basic2duavenv-v0',type=str)
     parse.add_argument('--algo',default='ddpg',type=str)
-    parse.add_argument('--num', default='10', type=str)
+    parse.add_argument('--num', default='1', type=str)
     parse.add_argument('--map', default='random', type=str)
     ARGS = parse.parse_args()
 
@@ -60,7 +60,7 @@ if __name__ == '__main__':
                                  deterministic=True,
                                  render=False)
 
-    model.learn(total_timesteps=1e6,
+    model.learn(total_timesteps=1e5,
                 callback=eval_callback,
                 log_interval=100)
 

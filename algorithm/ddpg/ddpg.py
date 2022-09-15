@@ -15,7 +15,7 @@ import numpy as np
 
 class DDPG(Algorithm):
     def __init__(self,env,device=th.device('cuda:0' if th.cuda.is_available() else 'cpu'),discount_factor=0.99,
-                 lr_rate=[1e-4,1e-3],tau=1e-3,weigt_decay=1e-2,batch_size=64,buffer_size=int(1e6)):
+                 lr_rate=[1e-4,1e-3],tau=1e-3,weigt_decay=1e-2,batch_size=64,buffer_size=int(1e4)):
         super(DDPG,self).__init__(device,discount_factor)
         self.env = env
 

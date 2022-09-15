@@ -9,7 +9,7 @@ from maps.example import WALLS
 
 if __name__ == '__main__':
 
-    env_name = 'single-basic2duavenv-v1'
+    env_name = 'single-basic2duavenv-v0'
     env = gym.make(env_name)
     obs = env.reset()
     goal = env._get_goal()
