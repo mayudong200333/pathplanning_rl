@@ -15,7 +15,7 @@ FLOAT = th.cuda.FloatTensor
 
 class RDPG(Algorithm):
     def __init__(self,env,device=th.device('cuda:0' if th.cuda.is_available() else 'cpu'),discount_factor=0.99,
-                 lr_rate=[1e-4,1e-3],tau=1e-3,weigt_decay=1e-2,batch_size=64,buffer_size=int(1e4)):
+                 lr_rate=[1e-4,1e-3],tau=1e-3,weight_decay=1e-2,batch_size=64,buffer_size=int(1e4)):
         super(RDPG,self).__init__(device,discount_factor)
         self.env = env
         self.maxlen=50
@@ -28,7 +28,7 @@ class RDPG(Algorithm):
         self.actor_target = copy.deepcopy(self.actor)
         self.critic_target = copy.deepcopy(self.critic)
         self.optimzer_actor = optim.Adam(self.actor.parameters(), lr=lr_rate[0])
-        self.optimzer_critic = optim.Adam(self.critic.parameters(), lr=lr_rate[1], weight_decay=weigt_decay)
+        self.optimzer_critic = optim.Adam(self.critic.parameters(), lr=lr_rate[1], weight_decay=weight_decay)
 
         self.replay_buffer = EpisodicReplayBuffer(buffer_size=buffer_size,
                                                   max_episode_size=self.maxlen,
@@ -84,33 +84,21 @@ class RDPG(Algorithm):
         cx_actor_t = Variable(th.zeros(self.batch_size, self.actor.hidden_size[2])).type(FLOAT)
         hx_actor_t = Variable(th.zeros(self.batch_size, self.actor.hidden_size[2])).type(FLOAT)
 
-#self.env.self.env._max_episode_steps
         for t in range(self.maxlen):
-            cx_critic = Variable(th.zeros(self.batch_size, self.critic.hidden_size[2])).type(FLOAT)
-            hx_critic = Variable(th.zeros(self.batch_size, self.critic.hidden_size[2])).type(FLOAT)
-
-            cx_critic_t = Variable(th.zeros(self.batch_size, self.critic.hidden_size[2])).type(FLOAT)
-            hx_critic_t = Variable(th.zeros(self.batch_size, self.critic.hidden_size[2])).type(FLOAT)
-
-            cx_actor = Variable(th.zeros(self.batch_size, self.actor.hidden_size[2])).type(FLOAT)
-            hx_actor = Variable(th.zeros(self.batch_size, self.actor.hidden_size[2])).type(FLOAT)
-
-            cx_actor_t = Variable(th.zeros(self.batch_size, self.actor.hidden_size[2])).type(FLOAT)
-            hx_actor_t = Variable(th.zeros(self.batch_size, self.actor.hidden_size[2])).type(FLOAT)
 
             state = state_batch[:,t,:]
             action = action_batch[:,t,:]
             next_state = next_state_batch[:,t,:]
             done = done_batch[:,t,:]
             reward = reward_batch[:,t,:]
-            target_mu_t,(_,_)= self.actor_target(next_state,(hx_actor_t,cx_actor_t))
-            target_q,(_,_) = self.critic_target(next_state,target_mu_t,(hx_critic_t,cx_critic_t))
+            target_mu_t,(hx_actor_t,cx_actor_t)= self.actor_target(next_state,(hx_actor_t,cx_actor_t))
+            target_q,(_,_) = self.critic_target(next_state,target_mu_t,(hx_actor_t,cx_actor_t))
             yit = reward + self.discount_factor * target_q * (1. - done)
-            qit,(_,_) = self.critic(state,action,(hx_critic,cx_critic))
+            qit,(_,_) = self.critic(state,action,(hx_actor,cx_actor))
             total_critic_loss +=  F.mse_loss(qit,yit)
 
             mu_t,(_,_) = self.actor(state,(hx_actor,cx_actor))
-            actor_loss_it,(_,_) = self.critic(state,mu_t,(hx_critic,cx_critic))
+            actor_loss_it,(hx_actor,cx_actor) = self.critic(state,mu_t,(hx_actor,cx_actor))
             total_actor_loss -= actor_loss_it.mean()
 
 
